@@ -26,7 +26,7 @@ var NavigationReactMobile = require('navigation-react-mobile');
 ```
 
 ## Example
-Here's the [Hello World example](http://grahammendick.github.io/navigation/documentation/hello-world.html) from the documentation. The example has two views. One view displays a Hyperlink that says 'Hello'. Clicking this Hyperlink navigates to the second view displaying the text 'World' inside a div. The Hyperlink passes across a number that sets the div's font-size.
+Checkout the [Hello World example](http://grahammendick.github.io/navigation/documentation/hello-world.html). The example has two views. One view displays a Hyperlink that says 'Hello'. Clicking this Hyperlink navigates to the second view displaying the text 'World' inside a div. The Hyperlink passes across a number that sets the div's font-size.
 
 ```js
 var stateNavigator = new Navigation.StateNavigator([

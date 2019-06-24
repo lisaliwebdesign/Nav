@@ -1,0 +1,155 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title>Navigation React</title>
+    <style>
+        table{border-collapse:collapse;}table,td,th{border:1px #000 solid;}
+        ul{list-style-type:none;padding:0;margin:0;}li{float:left;padding-right:3px;}
+        .active{font-weight:bold;}
+    </style>
+</head>
+<body>
+    <div id="content"></div>
+    <script src="../../Navigation/sample/personSearch.js"></script>
+    <script src="react.js"></script>
+    <script src="react-dom.js"></script>
+    <script src="JSXTransformer.js"></script>
+    <script src="../../build/dist/navigation.js"></script>
+    <script src="../../build/dist/navigation.react.js"></script>
+    <script type="text/jsx">
+        var { StateNavigator } = Navigation;
+        var { NavigationContext, NavigationHandler, NavigationLink, RefreshLink, NavigationBackLink } = NavigationReact;
+
+        class List extends React.Component {
+            shouldComponentUpdate(nextProps) {
+                return nextProps.startRowIndex !== this.props.startRowIndex || nextProps.maximumRows !== this.props.maximumRows
+                    || nextProps.sortExpression !== this.props.sortExpression || nextProps.name !== this.props.name;
+            }
+            render() {
+                var people = personSearch.search(this.props.name, this.props.sortExpression);
+                var totalRowCount = people.length;
+                people = people.slice(this.props.startRowIndex, this.props.startRowIndex + this.props.maximumRows);
+                var sortExpression = this.props.sortExpression.indexOf('DESC') === -1 ? 'Name DESC' : 'Name';
+                people = people.map(function (person) {
+                    return (
+                        <tr key={person.id}>
+                            <td><NavigationLink stateKey="person" navigationData={{ id: person.id }}>{person.name}</NavigationLink></td>
+                            <td>{person.dateOfBirth}</td>
+                        </tr>
+                    );
+                });
+                return (
+                    <div>
+                        <NavigationContext.Consumer>
+                            {({ stateNavigator, data }) => <Filter stateNavigator={stateNavigator} name={data.name} />}
+                        </NavigationContext.Consumer>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th><RefreshLink navigationData={{ sortExpression: sortExpression }} includeCurrentData={true}>Name</RefreshLink></th>
+                                    <th>Date of Birth</th>
+                                </tr>
+                            </thead>
+                            <tbody>{people}</tbody>
+                        </table>
+                        <Pager startRowIndex={this.props.startRowIndex} maximumRows={this.props.maximumRows} totalRowCount={totalRowCount} />
+                    </div>
+                );
+            }
+        };
+
+        class Filter extends React.Component {
+            constructor(props) {
+                super(props);
+                this.nameChange = this.nameChange.bind(this);
+            }
+            shouldComponentUpdate(nextProps) {
+                return nextProps.name !== this.props.name;
+            } 
+            nameChange(event) {
+                this.props.stateNavigator.refresh(this.props.stateNavigator.stateContext.includeCurrentData({ name: event.target.value, startRowIndex: null }));
+            }
+            render() {
+                return (
+                    <div>
+                        <div>
+                            <label htmlFor="name">Name</label>
+                            <input id="name" value={this.props.name || ''} onChange={this.nameChange} />
+                        </div>
+                        Page size&nbsp;
+                        <RefreshLink navigationData={{ maximumRows: 5, startRowIndex: null }} includeCurrentData={true} activeCssClass="active">5</RefreshLink>&nbsp;
+                        <RefreshLink navigationData={{ maximumRows: 10, startRowIndex: null }} includeCurrentData={true} activeCssClass="active">10</RefreshLink>
+                    </div>
+                );
+            }
+        };
+
+        class Pager extends React.Component {
+            shouldComponentUpdate(nextProps) {
+                return nextProps.startRowIndex !== this.props.startRowIndex || nextProps.maximumRows !== this.props.maximumRows
+                    || nextProps.totalRowCount !== this.props.totalRowCount;
+            }
+            render() {
+                var remainder = this.props.totalRowCount % this.props.maximumRows;
+                var previous = Math.max(0, this.props.startRowIndex - this.props.maximumRows);
+                var next = this.props.startRowIndex + this.props.maximumRows;
+                var last = remainder != 0 ? this.props.totalRowCount - remainder : this.props.totalRowCount - this.props.maximumRows;
+                if (next >= this.props.totalRowCount)
+                    next = last = this.props.startRowIndex;
+                return (
+                    <div>
+                        <ul>
+                            <li><RefreshLink navigationData={{ startRowIndex: 0 }} includeCurrentData={true} disableActive={true}>First</RefreshLink></li>
+                            <li><RefreshLink navigationData={{ startRowIndex: previous }} includeCurrentData={true} disableActive={true}>Previous</RefreshLink></li>
+                            <li><RefreshLink navigationData={{ startRowIndex: next }} includeCurrentData={true} disableActive={true}>Next</RefreshLink></li>
+                            <li><RefreshLink navigationData={{ startRowIndex: last }} includeCurrentData={true} disableActive={true}>Last</RefreshLink></li>
+                        </ul>
+                        Total Count {this.props.totalRowCount}
+                    </div>
+                );
+            }
+        };
+
+        class Details extends React.Component {
+            shouldComponentUpdate(nextProps) {
+                return nextProps.id !== this.props.id;
+            }
+            render() {
+                var person = personSearch.getDetails(this.props.id);
+                return (
+                    <div>
+                        <NavigationBackLink distance={1}>Person Search</NavigationBackLink>
+                        <div>
+                            Name: {person.name}<br />
+                            Date of Birth: {person.dateOfBirth}
+                        </div>
+                    </div>
+                );
+            }
+        };
+
+        var stateNavigator = new Navigation.StateNavigator([
+            { key: 'people', route: '{startRowIndex?}/{maximumRows?}/{sortExpression?}', defaults: { startRowIndex: 0, maximumRows: 10, sortExpression: 'Name'}, trackTypes: false, title: 'Person Search' },
+            { key: 'person', route: 'person', defaultTypes: { id: 'number' }, trackTypes: false, trackCrumbTrail: true, title: 'Person Details' }
+        ]);
+
+        var states = stateNavigator.states;
+        states.people.renderView = function (data) {
+            return <List name={data.name} startRowIndex={data.startRowIndex} maximumRows={data.maximumRows} sortExpression={data.sortExpression} />;
+        };
+        states.person.renderView = function (data) {
+            return <Details id={data.id} />;
+        }
+        stateNavigator.start();
+
+        ReactDOM.render(
+            <NavigationHandler stateNavigator={stateNavigator}>
+                <NavigationContext.Consumer>
+                    {({ state, data }) => state.renderView(data)}
+                </NavigationContext.Consumer>
+            </NavigationHandler>,
+            document.getElementById('content')
+        );
+</script>
+</body>
+</html>
